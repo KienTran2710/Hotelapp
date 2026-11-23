@@ -1,0 +1,139 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Thanh toán tiền phòng{% endblock %}
+
+{% block content %}
+<h2 class="text-center text-success fw-bold mb-1">HOÁ ĐƠN THANH TOÁN</h2>
+<p class="text-center text-muted small mb-4">
+    Quy định: Đơn giá phòng dành cho <strong>{{ regulation.standard_guests }} khách</strong>, khách vượt chuẩn phụ thu thêm <strong>{{ (regulation.surcharge_rate * 100)|int }}%</strong>. Phòng có khách nước ngoài nhân hệ số <strong>1.5</strong>.
+</p>
+
+{% if err_msg %}
+<div class="alert alert-danger">{{ err_msg }}</div>
+{% endif %}
+{% if success_msg %}
+<div class="alert alert-success">{{ success_msg }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" action="/payment" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Chọn Phiếu thuê chưa thanh toán</label>
+                <select name="rental_id" class="form-select" onchange="this.form.submit()">
+                    {% for rt in active_rentals %}
+                    <option value="{{ rt.id }}" {% if bill and bill.rental.id == rt.id %}selected{% endif %}>
+                        Phiếu thuê #{{ rt.id }} - Phòng {% for d in rt.details %}{{ d.room.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Ngày trả phòng</label>
+                <input type="date" name="actual_checkout" class="form-control"
+                       value="{{ bill.checkout_date if bill else '' }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Tính tiền</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if bill %}
+<div class="card shadow-sm border-success mb-4">
+    <div class="card-header bg-success text-white fw-bold text-center">HOÁ ĐƠN THANH TOÁN</div>
+    <div class="card-body">
+        <table class="table table-bordered mb-3">
+            <tbody>
+                <tr>
+                    <th class="bg-light" style="width: 20%;">Họ tên:</th>
+                    <td style="width: 30%;">{{ bill.customer_name }}</td>
+                    <th class="bg-light" style="width: 20%;">Phòng thuê:</th>
+                    <td class="fw-bold text-primary" style="width: 30%;">{{ bill.rooms_summary }}</td>
+                </tr>
+                <tr>
+                    <th class="bg-light">Ngày nhận phòng:</th>
+                    <td>{{ bill.checkin_date }}</td>
+                    <th class="bg-light">Ngày trả phòng:</th>
+                    <td>{{ bill.checkout_date }} ({{ bill.days }} ngày)</td>
+                </tr>
+                <tr>
+                    <th class="bg-light">Tổng tiền:</th>
+                    <td colspan="3" class="fw-bold text-danger fs-5">{{ "{:,.0f}".format(bill.total_amount) }} VNĐ</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>STT</th>
+                    <th>Phòng</th>
+                    <th>Loại phòng</th>
+                    <th class="text-end">Đơn giá</th>
+                    <th class="text-center">Số ngày</th>
+                    <th class="text-center">Số khách</th>
+                    <th class="text-center">Phụ thu</th>
+                    <th class="text-center">Hệ số</th>
+                    <th class="text-end">Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in bill['items'] %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold">{{ item.room_name }}</td>
+                    <td>{{ item.room_type }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(item.unit_price) }}</td>
+                    <td class="text-center">{{ item.days }}</td>
+                    <td class="text-center">{{ item.guest_count }}</td>
+                    <td class="text-center">+{{ item.surcharge_pct }}%</td>
+                    <td class="text-center">x{{ item.coefficient }}</td>
+                    <td class="text-end fw-bold">{{ "{:,.0f}".format(item.amount) }} VNĐ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <form method="post" action="/payment" class="text-end mt-3">
+            <input type="hidden" name="rental_id" value="{{ bill.rental.id }}">
+            <input type="hidden" name="actual_checkout" value="{{ bill.checkout_date }}">
+            <button type="submit" class="btn btn-success px-4 fw-bold">Xác nhận thanh toán & Trả phòng</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">Hiện không có phiếu thuê nào đang chờ thanh toán.</div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white fw-bold">Lịch sử Hoá đơn thanh toán</div>
+    <div class="card-body p-0">
+        <table class="table table-striped table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Mã HĐ</th>
+                    <th>Họ tên</th>
+                    <th>Phòng thuê</th>
+                    <th>Ngày nhận</th>
+                    <th>Ngày trả</th>
+                    <th class="text-end">Tổng tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td>#{{ inv.id }}</td>
+                    <td>{{ inv.customer_name }}</td>
+                    <td class="fw-bold">{{ inv.rooms_summary }}</td>
+                    <td>{{ inv.checkin_date }}</td>
+                    <td>{{ inv.checkout_date }}</td>
+                    <td class="text-end fw-bold text-success">{{ "{:,.0f}".format(inv.total_amount) }} VNĐ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

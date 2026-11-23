@@ -1,0 +1,62 @@
+<nav class="navbar navbar-expand-lg bg-dark navbar-dark shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold text-warning" href="/">HOTEL PMS</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="collapsibleNavbar">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Danh sách phòng</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Loại phòng</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/">Tất cả loại phòng</a></li>
+                        {% for rt in room_types %}
+                        <li><a class="dropdown-item" href="/?room_type_id={{ rt.id }}">{{ rt.name }} ({{ "{:,.0f}".format(rt.price) }} VNĐ)</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/booking">1. Đặt phòng</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/rental">2. Lập phiếu thuê</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/payment">3. Thanh toán</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/stats">4. Thống kê</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-info" href="/admin/room">5. Quản trị & Quy định</a>
+                </li>
+            </ul>
+
+            <ul class="navbar-nav me-3">
+                {% if session.get('user_id') %}
+                <li class="nav-item">
+                    <span class="nav-link text-light">Xin chào, <strong>{{ session.get('user_name') }}</strong> ({{ session.get('role') }})</span>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-danger" href="/logout">Đăng xuất</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link text-warning" href="/login">Đăng nhập</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-success" href="/register">Đăng ký</a>
+                </li>
+                {% endif %}
+            </ul>
+
+            <form class="d-flex" method="get" action="/">
+                <input class="form-control me-2" type="text" placeholder="Tìm phòng..." name="kw" value="{{ request.args.get('kw', '') }}" />
+                <button class="btn btn-primary" type="submit">Tìm</button>
+            </form>
+        </div>
+    </div>
+</nav>

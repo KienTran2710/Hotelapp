@@ -1,0 +1,222 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Lập phiếu thuê phòng{% endblock %}
+
+{% block content %}
+<h2 class="text-center text-warning fw-bold mb-1">PHIẾU THUÊ PHÒNG</h2>
+<p class="text-center text-muted small mb-4">
+    Quy định: Có {{ customer_types|length }} loại khách (Nội địa / Nước ngoài), mỗi phòng được ở tối đa <strong>{{ regulation.max_guests_per_room }} khách</strong>.
+</p>
+
+{% if err_msg %}
+<div class="alert alert-danger">{{ err_msg }}</div>
+{% endif %}
+{% if success_msg %}
+<div class="alert alert-success">{{ success_msg }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white fw-bold">Tra cứu khách đã đặt phòng (theo họ tên khách hàng)</div>
+    <div class="card-body">
+        <form method="get" action="/rental" class="row g-2 mb-3">
+            <div class="col-md-8">
+                <input type="text" name="kw_booking" class="form-control" placeholder="Nhập họ tên người đặt phòng..." value="{{ kw_booking }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Tra cứu</button>
+            </div>
+            <div class="col-md-2">
+                <a href="/rental" class="btn btn-outline-secondary w-100">Thuê trực tiếp</a>
+            </div>
+        </form>
+
+        {% if pending_bookings %}
+        <table class="table table-sm table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Mã ĐP</th>
+                    <th>Họ tên người đặt</th>
+                    <th>Phòng đặt</th>
+                    <th>Ngày nhận - trả</th>
+                    <th>Chọn</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in pending_bookings %}
+                <tr>
+                    <td>#{{ b.id }}</td>
+                    <td>{{ b.booker_name }}</td>
+                    <td class="fw-bold">{% for d in b.details %}{{ d.room.name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{{ b.checkin_date }} đến {{ b.checkout_date }}</td>
+                    <td><a href="/rental?booking_id={{ b.id }}" class="btn btn-sm btn-primary">Nạp phiếu đặt</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 border-warning">
+    <div class="card-header bg-warning text-dark fw-bold">
+        {% if selected_booking %}
+            Lập Phiếu thuê từ Phiếu đặt #{{ selected_booking.id }} ({{ selected_booking.booker_name }})
+        {% else %}
+            Lập Phiếu thuê phòng trực tiếp (Khách chưa đặt trước)
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <form method="post" action="/rental">
+            {% if selected_booking %}
+            <input type="hidden" name="booking_id" value="{{ selected_booking.id }}">
+            {% endif %}
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Ngày nhận phòng *</label>
+                    <input type="date" name="checkin_date" class="form-control"
+                           value="{{ selected_booking.checkin_date if selected_booking else today }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Ngày trả phòng *</label>
+                    <input type="date" name="checkout_date" class="form-control"
+                           value="{{ selected_booking.checkout_date if selected_booking else tomorrow }}" required>
+                </div>
+            </div>
+
+            {% if selected_booking %}
+                {% for d in selected_booking.details %}
+                <input type="hidden" name="room_ids" value="{{ d.room.id }}">
+                <div class="card mb-3">
+                    <div class="card-header fw-bold">Phòng {{ d.room.name }} ({{ d.room.room_type.name }})</div>
+                    <div class="card-body p-0">
+                        <table class="table table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 60px;">STT</th>
+                                    <th>Khách hàng</th>
+                                    <th style="width: 180px;">Loại khách</th>
+                                    <th style="width: 180px;">CMND</th>
+                                    <th>Địa chỉ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for idx in range(1, regulation.max_guests_per_room + 1) %}
+                                {% set g = d.guests[idx - 1] if idx <= d.guests|length else None %}
+                                <tr>
+                                    <td class="text-center">{{ idx }}</td>
+                                    <td><input type="text" name="guest_name_{{ d.room.id }}_{{ idx }}" class="form-control form-control-sm" value="{{ g.guest_name if g else '' }}"></td>
+                                    <td>
+                                        <select name="guest_type_{{ d.room.id }}_{{ idx }}" class="form-select form-select-sm">
+                                            {% for ct in customer_types %}
+                                            <option value="{{ ct.id }}" {% if g and g.customer_type_id == ct.id %}selected{% endif %}>{{ ct.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="text" name="guest_cmnd_{{ d.room.id }}_{{ idx }}" class="form-control form-control-sm" value="{{ g.identity_card if g else '' }}"></td>
+                                    <td><input type="text" name="guest_addr_{{ d.room.id }}_{{ idx }}" class="form-control form-control-sm" value="{{ g.address if g else '' }}"></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Chọn các phòng thuê:</label>
+                    <div class="row g-2">
+                        {% for r in available_rooms %}
+                        <div class="col-md-3 col-6">
+                            <div class="form-check border rounded p-2">
+                                <input class="form-check-input" type="checkbox" name="room_ids" value="{{ r.id }}" id="rt_room_{{ r.id }}" onchange="toggleRentalRoom('{{ r.id }}')">
+                                <label class="form-check-label fw-bold" for="rt_room_{{ r.id }}">{{ r.name }} - {{ r.room_type.name }}</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% for r in available_rooms %}
+                <div id="rt_block_{{ r.id }}" class="card mb-3 d-none">
+                    <div class="card-header fw-bold">Danh sách khách - Phòng {{ r.name }}</div>
+                    <div class="card-body p-0">
+                        <table class="table table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 60px;">STT</th>
+                                    <th>Khách hàng</th>
+                                    <th style="width: 180px;">Loại khách</th>
+                                    <th style="width: 180px;">CMND</th>
+                                    <th>Địa chỉ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for idx in range(1, regulation.max_guests_per_room + 1) %}
+                                <tr>
+                                    <td class="text-center">{{ idx }}</td>
+                                    <td><input type="text" name="guest_name_{{ r.id }}_{{ idx }}" class="form-control form-control-sm"></td>
+                                    <td>
+                                        <select name="guest_type_{{ r.id }}_{{ idx }}" class="form-select form-select-sm">
+                                            {% for ct in customer_types %}
+                                            <option value="{{ ct.id }}">{{ ct.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="text" name="guest_cmnd_{{ r.id }}_{{ idx }}" class="form-control form-control-sm"></td>
+                                    <td><input type="text" name="guest_addr_{{ r.id }}_{{ idx }}" class="form-control form-control-sm"></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-warning fw-bold px-4">Xác nhận Phiếu thuê phòng</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white fw-bold">Danh sách Phiếu thuê đang hoạt động</div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Mã PT</th>
+                    <th>Các phòng thuê</th>
+                    <th>Ngày nhận phòng</th>
+                    <th>Ngày trả phòng</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rt in active_rentals %}
+                <tr>
+                    <td>#{{ rt.id }}</td>
+                    <td class="fw-bold text-danger">{% for d in rt.details %}{{ d.room.name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{{ rt.checkin_date }}</td>
+                    <td>{{ rt.checkout_date }}</td>
+                    <td><a href="/payment?rental_id={{ rt.id }}" class="btn btn-sm btn-success">Thanh toán</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function toggleRentalRoom(roomId) {
+    const cb = document.getElementById('rt_room_' + roomId);
+    const block = document.getElementById('rt_block_' + roomId);
+    if (cb && block) {
+        if (cb.checked) block.classList.remove('d-none');
+        else block.classList.add('d-none');
+    }
+}
+</script>
+{% endblock %}

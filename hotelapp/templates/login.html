@@ -1,0 +1,30 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Đăng nhập{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h2 class="text-center text-success fw-bold mt-2 mb-3">ĐĂNG NHẬP NGƯỜI DÙNG</h2>
+        {% if err_msg %}
+        <div class="alert alert-danger">{{ err_msg }}</div>
+        {% endif %}
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" action="/login">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tên đăng nhập</label>
+                        <input type="text" name="username" class="form-control" placeholder="Tên đăng nhập" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mật khẩu</label>
+                        <input type="password" name="password" class="form-control" placeholder="Mật khẩu" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
+                </form>
+                <p class="text-muted small mt-3 mb-0">Tài khoản admin: <strong>admin</strong> / <strong>123456</strong> </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
